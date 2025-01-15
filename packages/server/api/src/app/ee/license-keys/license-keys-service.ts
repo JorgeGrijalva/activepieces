@@ -1,5 +1,16 @@
 import { rejectedPromiseHandler } from '@activepieces/server-shared'
-import { ActivepiecesError, ApEdition, CreateTrialLicenseKeyRequestBody, ErrorCode, isNil, LicenseKeyEntity, PackageType, PlatformRole, TelemetryEventName, UserStatus } from '@activepieces/shared'
+import { 
+  ActivepiecesError, 
+  ApEdition,
+  CreateTrialLicenseKeyRequestBody, 
+  ErrorCode,
+  isNil,
+  LicenseKeyEntity,
+  PackageType,
+  PlatformRole,
+  TelemetryEventName,
+  UserStatus
+} from '@activepieces/shared'
 import dayjs from 'dayjs'
 import { FastifyBaseLogger } from 'fastify'
 import { StatusCodes } from 'http-status-codes'
@@ -18,30 +29,60 @@ const handleUnexpectedSecretsManagerError = (log: FastifyBaseLogger, message: st
 
 export const licenseKeysService = (log: FastifyBaseLogger) => ({
     async requestTrial(request: CreateTrialLicenseKeyRequestBody): Promise<void> {
-        // Simulamos éxito sin hacer llamada real
-        return Promise.resolve();
+        return Promise.resolve()
     },
 
     async markAsActiviated(request: { key: string, platformId: string }): Promise<void> {
-        // Simulamos éxito sin hacer llamada real
-        return Promise.resolve();
+        return Promise.resolve()
     },
 
-    // Nuevo método para obtener siempre una licencia enterprise
+    async getKey(key: string): Promise<LicenseKeyEntity | null> {
+        return this.getLicenseKey()
+    },
+
+    async verifyKeyOrReturnNull({ platformId, license }: { platformId: string, license: string }): Promise<LicenseKeyEntity | null> {
+        return this.getLicenseKey()
+    },
+
+    async applyLimits(platformId: string, key: LicenseKeyEntity): Promise<void> {
+        return Promise.resolve()
+    },
+
+    async downgradeToFreePlan(platformId: string): Promise<void> {
+        return Promise.resolve()
+    },
+
     async getLicenseKey(): Promise<LicenseKeyEntity> {
         return {
             id: 'enterprise-license',
-            key: 'ENTERPRISE-ALWAYS-VALID',
-            type: PackageType.ENTERPRISE,
+            key: 'ENTERPRISE-ALWAYS-VALID', 
             edition: ApEdition.ENTERPRISE,
-            expirationDate: dayjs().add(100, 'years').toISOString(), // Licencia válida por 100 años
+            expirationDate: dayjs().add(100, 'years').toISOString(),
             activationDate: dayjs().toISOString(),
             email: 'enterprise@local.dev',
             created: dayjs().toISOString(),
             updated: dayjs().toISOString(),
-        };
+            isTrial: false,
+            environmentsEnabled: true,
+            analyticsEnabled: true,
+            showPoweredBy: false,
+            auditLogEnabled: true,
+            embeddingEnabled: true,
+            managePiecesEnabled: true,
+            manageProjectsEnabled: true,
+            projectRolesEnabled: true,
+            customDomainsEnabled: true,
+            apiKeysEnabled: true,
+            flowIssuesEnabled: true,
+            alertsEnabled: true,
+            ssoEnabled: true,
+            customAppearanceEnabled: true,
+            manageTemplatesEnabled: true,
+            customRolesEnabled: true,
+            globalConnectionsEnabled: true
+        }
     }
-});
+})
 
 // Opcional: También puedes mockear el flag service para asegurar features enterprise
 flagService.override('enterprise', true);

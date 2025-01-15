@@ -16,6 +16,27 @@ const handleUnexpectedSecretsManagerError = (log: FastifyBaseLogger, message: st
     throw new Error(message)
 }
 
+// Create a constant for enabled Enterprise features
+const alwaysEnabledFeatures = {
+    ssoEnabled: true,
+    analyticsEnabled: true,
+    environmentsEnabled: true,
+    showPoweredBy: false,
+    embeddingEnabled: true,
+    auditLogEnabled: true,
+    customAppearanceEnabled: true,
+    manageProjectsEnabled: true,
+    managePiecesEnabled: true,
+    manageTemplatesEnabled: true,
+    apiKeysEnabled: true,
+    customDomainsEnabled: true,
+    globalConnectionsEnabled: true,
+    customRolesEnabled: true,
+    projectRolesEnabled: true,
+    flowIssuesEnabled: true,
+    alertsEnabled: true
+}
+
 export const licenseKeysService = (log: FastifyBaseLogger) => ({
     async requestTrial(request: CreateTrialLicenseKeyRequestBody): Promise<void> {
         const response = await fetch(secretManagerLicenseKeysRoute, {
@@ -117,26 +138,10 @@ export const licenseKeysService = (log: FastifyBaseLogger) => ({
         await deactivatePlatformUsersOtherThanAdmin(platformId)
         await deletePrivatePieces(platformId, log)
     },
-    async applyLimits(platformId: string, key: LicenseKeyEntity): Promise<void> {
+    async applyLimits(platformId: string): Promise<void> {
         await platformService.update({
             id: platformId,
-            ssoEnabled: key.ssoEnabled,
-            environmentsEnabled: key.environmentsEnabled,
-            showPoweredBy: key.showPoweredBy,
-            embeddingEnabled: key.embeddingEnabled,
-            auditLogEnabled: key.auditLogEnabled,
-            customAppearanceEnabled: key.customAppearanceEnabled,
-            globalConnectionsEnabled: key.globalConnectionsEnabled,
-            customRolesEnabled: key.customRolesEnabled,
-            manageProjectsEnabled: key.manageProjectsEnabled,
-            managePiecesEnabled: key.managePiecesEnabled,
-            manageTemplatesEnabled: key.manageTemplatesEnabled,
-            apiKeysEnabled: key.apiKeysEnabled,
-            customDomainsEnabled: key.customDomainsEnabled,
-            projectRolesEnabled: key.projectRolesEnabled,
-            flowIssuesEnabled: key.flowIssuesEnabled,
-            alertsEnabled: key.alertsEnabled,
-            analyticsEnabled: key.analyticsEnabled,
+            ...alwaysEnabledFeatures
         })
     },
 })
@@ -194,23 +199,3 @@ const turnedOffFeatures: Omit<LicenseKeyEntity, 'id' | 'createdAt' | 'expiresAt'
     flowIssuesEnabled: false,
     alertsEnabled: false,
 }
-
-await licenseKeysService(log).applyLimits(platformId, {
-  ssoEnabled: true,
-  environmentsEnabled: true, 
-  showPoweredBy: false,
-  embeddingEnabled: true,
-  auditLogEnabled: true,
-  customAppearanceEnabled: true,
-  globalConnectionsEnabled: true,
-  customRolesEnabled: true,
-  manageProjectsEnabled: true,
-  managePiecesEnabled: true,
-  manageTemplatesEnabled: true,
-  apiKeysEnabled: true,
-  customDomainsEnabled: true,
-  projectRolesEnabled: true,
-  flowIssuesEnabled: true,
-  alertsEnabled: true,
-  analyticsEnabled: true
-})

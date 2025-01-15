@@ -293,6 +293,7 @@ export const setupApp = async (app: FastifyInstance): Promise<FastifyInstance> =
             exceptionHandler.initializeSentry(system.get(AppSystemProp.SENTRY_DSN))
             break
         case ApEdition.ENTERPRISE:
+            // Register all Enterprise modules
             await app.register(customDomainModule)
             await app.register(platformProjectModule)
             await app.register(projectMemberModule)

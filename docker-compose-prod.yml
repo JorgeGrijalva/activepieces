@@ -31,6 +31,7 @@ services:
       AP_SANDBOX_RUN_TIME_SECONDS: 600
       AP_TELEMETRY_ENABLED: "false"
       AP_TEMPLATES_SOURCE_URL: https://cloud.activepieces.com/api/v1/flow-templates
+      AP_EDITION: ENTERPRISE
 
   postgres:
     image: postgres:14

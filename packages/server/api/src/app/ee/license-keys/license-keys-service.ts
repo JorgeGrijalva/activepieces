@@ -1,16 +1,5 @@
 import { rejectedPromiseHandler } from '@activepieces/server-shared'
-import { 
-  ActivepiecesError, 
-  ApEdition,
-  CreateTrialLicenseKeyRequestBody, 
-  ErrorCode,
-  isNil,
-  LicenseKeyEntity,
-  PackageType,
-  PlatformRole,
-  TelemetryEventName,
-  UserStatus
-} from '@activepieces/shared'
+import { ActivepiecesError, ApEdition, CreateTrialLicenseKeyRequestBody, ErrorCode, isNil, LicenseKeyEntity, PackageType, PlatformRole, TelemetryEventName, UserStatus } from '@activepieces/shared'
 import dayjs from 'dayjs'
 import { FastifyBaseLogger } from 'fastify'
 import { StatusCodes } from 'http-status-codes'
@@ -29,63 +18,129 @@ const handleUnexpectedSecretsManagerError = (log: FastifyBaseLogger, message: st
 
 export const licenseKeysService = (log: FastifyBaseLogger) => ({
     async requestTrial(request: CreateTrialLicenseKeyRequestBody): Promise<void> {
-        return Promise.resolve()
+        const response = await fetch(secretManagerLicenseKeysRoute, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(request),
+        })
+        if (response.status === StatusCodes.CONFLICT) {
+            throw new ActivepiecesError({
+                code: ErrorCode.EMAIL_ALREADY_HAS_ACTIVATION_KEY,
+                params: request,
+            })
+        }
+        if (!response.ok) {
+            const errorMessage = JSON.stringify(await response.json())
+            handleUnexpectedSecretsManagerError(log, errorMessage)
+        }
     },
-
     async markAsActiviated(request: { key: string, platformId: string }): Promise<void> {
-        return Promise.resolve()
+        try {
+            const response = await fetch(`${secretManagerLicenseKeysRoute}/activate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(request),
+            })
+            if (response.status === StatusCodes.CONFLICT) {
+                return
+            }
+            if (response.status === StatusCodes.NOT_FOUND) {
+                return
+            }
+            if (!response.ok) {
+                const errorMessage = JSON.stringify(await response.json())
+                handleUnexpectedSecretsManagerError(log, errorMessage)
+            }
+            rejectedPromiseHandler(telemetry(log).trackPlatform(request.platformId, {
+                name: TelemetryEventName.KEY_ACTIVIATED,
+                payload: {
+                    date: dayjs().toISOString(),
+                    key: request.key,
+                },
+            }), log)
+        }
+        catch (e) {
+            // ignore
+        }
     },
-
-    async getKey(key: string): Promise<LicenseKeyEntity | null> {
-        return this.getLicenseKey()
+    async getKey(license: string | undefined): Promise<LicenseKeyEntity | null> {
+        if (isNil(license)) {
+            return null
+        }
+        const response = await fetch(`${secretManagerLicenseKeysRoute}/${license}`)
+        if (response.status === StatusCodes.NOT_FOUND) {
+            return null
+        }
+        if (!response.ok) {
+            const errorMessage = JSON.stringify(await response.json())
+            handleUnexpectedSecretsManagerError(log, errorMessage)
+        }
+        return response.json()
     },
-
-    async verifyKeyOrReturnNull({ platformId, license }: { platformId: string, license: string }): Promise<LicenseKeyEntity | null> {
-        return this.getLicenseKey()
-    },
-
-    async applyLimits(platformId: string, key: LicenseKeyEntity): Promise<void> {
-        return Promise.resolve()
-    },
-
-    async downgradeToFreePlan(platformId: string): Promise<void> {
-        return Promise.resolve()
-    },
-
-    async getLicenseKey(): Promise<LicenseKeyEntity> {
+    async verifyKeyOrReturnNull({ platformId, license }: { license: string | undefined, platformId: string }): Promise<LicenseKeyEntity | null  > {
         return {
-            id: 'enterprise-license',
-            key: 'ENTERPRISE-ALWAYS-VALID', 
-            edition: ApEdition.ENTERPRISE,
-            expirationDate: dayjs().add(100, 'years').toISOString(),
-            activationDate: dayjs().toISOString(),
-            email: 'enterprise@local.dev',
-            created: dayjs().toISOString(),
-            updated: dayjs().toISOString(),
+            id: '1',
+            key: license || 'ENTERPRISE',
+            createdAt: new Date().toISOString(),
+            expiresAt: '2099-12-31T23:59:59.999Z',
+            activatedAt: new Date().toISOString(),
             isTrial: false,
+            email: 'enterprise@activepieces.com',
+            customerName: 'Enterprise',
+            ssoEnabled: true,
             environmentsEnabled: true,
-            analyticsEnabled: true,
             showPoweredBy: false,
-            auditLogEnabled: true,
             embeddingEnabled: true,
-            managePiecesEnabled: true,
+            auditLogEnabled: true,
+            customAppearanceEnabled: true,
+            globalConnectionsEnabled: true,
+            customRolesEnabled: true,
             manageProjectsEnabled: true,
-            projectRolesEnabled: true,
-            customDomainsEnabled: true,
+            managePiecesEnabled: true,
+            manageTemplatesEnabled: true,
             apiKeysEnabled: true,
+            customDomainsEnabled: true,
+            projectRolesEnabled: true,
             flowIssuesEnabled: true,
             alertsEnabled: true,
-            ssoEnabled: true,
-            customAppearanceEnabled: true,
-            manageTemplatesEnabled: true,
-            customRolesEnabled: true,
-            globalConnectionsEnabled: true
+            analyticsEnabled: true,
         }
-    }
+    },
+    async downgradeToFreePlan(platformId: string): Promise<void> {
+        await platformService.update({
+            id: platformId,
+            ...turnedOffFeatures,
+        })
+        await deactivatePlatformUsersOtherThanAdmin(platformId)
+        await deletePrivatePieces(platformId, log)
+    },
+    async applyLimits(platformId: string, key: LicenseKeyEntity): Promise<void> {
+        await platformService.update({
+            id: platformId,
+            ssoEnabled: key.ssoEnabled,
+            environmentsEnabled: key.environmentsEnabled,
+            showPoweredBy: key.showPoweredBy,
+            embeddingEnabled: key.embeddingEnabled,
+            auditLogEnabled: key.auditLogEnabled,
+            customAppearanceEnabled: key.customAppearanceEnabled,
+            globalConnectionsEnabled: key.globalConnectionsEnabled,
+            customRolesEnabled: key.customRolesEnabled,
+            manageProjectsEnabled: key.manageProjectsEnabled,
+            managePiecesEnabled: key.managePiecesEnabled,
+            manageTemplatesEnabled: key.manageTemplatesEnabled,
+            apiKeysEnabled: key.apiKeysEnabled,
+            customDomainsEnabled: key.customDomainsEnabled,
+            projectRolesEnabled: key.projectRolesEnabled,
+            flowIssuesEnabled: key.flowIssuesEnabled,
+            alertsEnabled: key.alertsEnabled,
+            analyticsEnabled: key.analyticsEnabled,
+        })
+    },
 })
-
-// Opcional: También puedes mockear el flag service para asegurar features enterprise
-flagService.override('enterprise', true);
 
 const deactivatePlatformUsersOtherThanAdmin: (platformId: string) => Promise<void> = async (platformId: string) => {
     const { data } = await userService.list({

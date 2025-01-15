@@ -138,10 +138,11 @@ export const licenseKeysService = (log: FastifyBaseLogger) => ({
         await deactivatePlatformUsersOtherThanAdmin(platformId)
         await deletePrivatePieces(platformId, log)
     },
-    async applyLimits(platformId: string): Promise<void> {
+    async applyLimits(platformId: string, key?: LicenseKeyEntity): Promise<void> {
         await platformService.update({
             id: platformId,
-            ...alwaysEnabledFeatures
+            ...alwaysEnabledFeatures,
+            ...(key || {})
         })
     },
 })

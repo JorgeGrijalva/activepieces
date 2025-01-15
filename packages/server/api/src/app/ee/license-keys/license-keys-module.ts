@@ -24,7 +24,7 @@ export const licenseKeysModule: FastifyPluginAsyncTypebox = async (app) => {
                     await licenseKeysService(app.log).downgradeToFreePlan(platform.id)
                     continue
                 }
-                await licenseKeysService(app.log).applyLimits(platform.id, key)
+                await licenseKeysService(app.log).applyLimits(platform.id) // Remove second argument
             }
             catch (e) {
                 exceptionHandler.handle(e, app.log)

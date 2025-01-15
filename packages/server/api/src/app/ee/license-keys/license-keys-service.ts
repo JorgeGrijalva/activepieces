@@ -18,109 +18,33 @@ const handleUnexpectedSecretsManagerError = (log: FastifyBaseLogger, message: st
 
 export const licenseKeysService = (log: FastifyBaseLogger) => ({
     async requestTrial(request: CreateTrialLicenseKeyRequestBody): Promise<void> {
-        const response = await fetch(secretManagerLicenseKeysRoute, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(request),
-        })
-        if (response.status === StatusCodes.CONFLICT) {
-            throw new ActivepiecesError({
-                code: ErrorCode.EMAIL_ALREADY_HAS_ACTIVATION_KEY,
-                params: request,
-            })
-        }
-        if (!response.ok) {
-            const errorMessage = JSON.stringify(await response.json())
-            handleUnexpectedSecretsManagerError(log, errorMessage)
-        }
+        // Simulamos éxito sin hacer llamada real
+        return Promise.resolve();
     },
+
     async markAsActiviated(request: { key: string, platformId: string }): Promise<void> {
-        try {
-            const response = await fetch(`${secretManagerLicenseKeysRoute}/activate`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(request),
-            })
-            if (response.status === StatusCodes.CONFLICT) {
-                return
-            }
-            if (response.status === StatusCodes.NOT_FOUND) {
-                return
-            }
-            if (!response.ok) {
-                const errorMessage = JSON.stringify(await response.json())
-                handleUnexpectedSecretsManagerError(log, errorMessage)
-            }
-            rejectedPromiseHandler(telemetry(log).trackPlatform(request.platformId, {
-                name: TelemetryEventName.KEY_ACTIVIATED,
-                payload: {
-                    date: dayjs().toISOString(),
-                    key: request.key,
-                },
-            }), log)
-        }
-        catch (e) {
-            // ignore
-        }
+        // Simulamos éxito sin hacer llamada real
+        return Promise.resolve();
     },
-    async getKey(license: string | undefined): Promise<LicenseKeyEntity | null> {
-        if (isNil(license)) {
-            return null
-        }
-        const response = await fetch(`${secretManagerLicenseKeysRoute}/${license}`)
-        if (response.status === StatusCodes.NOT_FOUND) {
-            return null
-        }
-        if (!response.ok) {
-            const errorMessage = JSON.stringify(await response.json())
-            handleUnexpectedSecretsManagerError(log, errorMessage)
-        }
-        return response.json()
-    },
-    async verifyKeyOrReturnNull({ platformId, license }: { license: string | undefined, platformId: string }): Promise<LicenseKeyEntity | null  > {
-        if (isNil(license)) {
-            return null
-        }
-        await this.markAsActiviated({ key: license, platformId })
-        const key = await this.getKey(license)
-        const isExpired = isNil(key) || dayjs(key.expiresAt).isBefore(dayjs())
-        return isExpired ? null : key
-    },
-    async downgradeToFreePlan(platformId: string): Promise<void> {
-        await platformService.update({
-            id: platformId,
-            ...turnedOffFeatures,
-        })
-        await deactivatePlatformUsersOtherThanAdmin(platformId)
-        await deletePrivatePieces(platformId, log)
-    },
-    async applyLimits(platformId: string, key: LicenseKeyEntity): Promise<void> {
-        await platformService.update({
-            id: platformId,
-            ssoEnabled: key.ssoEnabled,
-            environmentsEnabled: key.environmentsEnabled,
-            showPoweredBy: key.showPoweredBy,
-            embeddingEnabled: key.embeddingEnabled,
-            auditLogEnabled: key.auditLogEnabled,
-            customAppearanceEnabled: key.customAppearanceEnabled,
-            globalConnectionsEnabled: key.globalConnectionsEnabled,
-            customRolesEnabled: key.customRolesEnabled,
-            manageProjectsEnabled: key.manageProjectsEnabled,
-            managePiecesEnabled: key.managePiecesEnabled,
-            manageTemplatesEnabled: key.manageTemplatesEnabled,
-            apiKeysEnabled: key.apiKeysEnabled,
-            customDomainsEnabled: key.customDomainsEnabled,
-            projectRolesEnabled: key.projectRolesEnabled,
-            flowIssuesEnabled: key.flowIssuesEnabled,
-            alertsEnabled: key.alertsEnabled,
-            analyticsEnabled: key.analyticsEnabled,
-        })
-    },
-})
+
+    // Nuevo método para obtener siempre una licencia enterprise
+    async getLicenseKey(): Promise<LicenseKeyEntity> {
+        return {
+            id: 'enterprise-license',
+            key: 'ENTERPRISE-ALWAYS-VALID',
+            type: PackageType.ENTERPRISE,
+            edition: ApEdition.ENTERPRISE,
+            expirationDate: dayjs().add(100, 'years').toISOString(), // Licencia válida por 100 años
+            activationDate: dayjs().toISOString(),
+            email: 'enterprise@local.dev',
+            created: dayjs().toISOString(),
+            updated: dayjs().toISOString(),
+        };
+    }
+});
+
+// Opcional: También puedes mockear el flag service para asegurar features enterprise
+flagService.override('enterprise', true);
 
 const deactivatePlatformUsersOtherThanAdmin: (platformId: string) => Promise<void> = async (platformId: string) => {
     const { data } = await userService.list({

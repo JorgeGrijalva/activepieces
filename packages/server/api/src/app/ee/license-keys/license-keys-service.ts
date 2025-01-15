@@ -90,7 +90,6 @@ export const licenseKeysService = (log: FastifyBaseLogger) => ({
             activatedAt: new Date().toISOString(),
             isTrial: false,
             email: 'enterprise@activepieces.com',
-            customerName: 'Enterprise',
             ssoEnabled: true,
             environmentsEnabled: true,
             showPoweredBy: false,

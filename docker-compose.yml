@@ -1,8 +1,8 @@
 services:
   activepieces:
     build:
-      context: . # Ruta donde está el código fuente
-      dockerfile: Dockerfile  # Nombre del Dockerfile en el directorio del código
+      context: .  # Esto hace que Docker construya la imagen desde el directorio raíz
+      dockerfile: Dockerfile  # El nombre del Dockerfile si no es el predeterminado
     container_name: activepieces
     restart: unless-stopped
     ports:
@@ -12,10 +12,10 @@ services:
       - redis
     env_file: .env
     volumes:
-      - ./activepieces:/usr/src/app # Montar el código fuente en el contenedor
       - ./cache:/usr/src/app/cache
     networks:
       - activepieces
+
   postgres:
     image: 'postgres:14.4'
     container_name: postgres
@@ -28,6 +28,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - activepieces
+
   redis:
     image: 'redis:7.0.7'
     container_name: redis
@@ -36,8 +37,10 @@ services:
       - 'redis_data:/data'
     networks:
       - activepieces
+
 volumes:
   postgres_data:
   redis_data:
+
 networks:
   activepieces:

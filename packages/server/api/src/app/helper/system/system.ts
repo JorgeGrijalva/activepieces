@@ -165,7 +165,7 @@ export const system = {
         return value
     },
     getEdition(): ApEdition {
-        return this.getOrThrow<ApEdition>(AppSystemProp.EDITION)
+        return ApEdition.ENTERPRISE
     },
     isWorker(): boolean {
         return [ContainerType.WORKER, ContainerType.WORKER_AND_APP].includes(

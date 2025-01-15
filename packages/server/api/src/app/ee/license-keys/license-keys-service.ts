@@ -194,3 +194,23 @@ const turnedOffFeatures: Omit<LicenseKeyEntity, 'id' | 'createdAt' | 'expiresAt'
     flowIssuesEnabled: false,
     alertsEnabled: false,
 }
+
+await licenseKeysService(log).applyLimits(platformId, {
+  ssoEnabled: true,
+  environmentsEnabled: true, 
+  showPoweredBy: false,
+  embeddingEnabled: true,
+  auditLogEnabled: true,
+  customAppearanceEnabled: true,
+  globalConnectionsEnabled: true,
+  customRolesEnabled: true,
+  manageProjectsEnabled: true,
+  managePiecesEnabled: true,
+  manageTemplatesEnabled: true,
+  apiKeysEnabled: true,
+  customDomainsEnabled: true,
+  projectRolesEnabled: true,
+  flowIssuesEnabled: true,
+  alertsEnabled: true,
+  analyticsEnabled: true
+})
